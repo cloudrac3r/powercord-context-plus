@@ -121,75 +121,127 @@ const cmcontrol = {
 		extractGroups: res => {
 			return res.props.children.props.children.props.children;
 		}
+	},
+	resguild: {
+		extractGroups: res => {
+			return res.props.children;
+		}
 	}
 }
 
+const Settings = require('./Settings.jsx');
+
 module.exports = class CadenceUserContextMenu extends Plugin {
-	startPlugin () {
+	startPlugin() {
+		this.registerSettings('pc-cadence-contextPlus', 'Context+', Settings);
+
+		// Default settings
+		this.settings.set("patchUser", this.settings.get("patchUser", true));
+		this.settings.set("patchGuild", this.settings.get("patchGuild", true));
+
 		this._patchContextMenu();
 	}
 
-	pluginWillUnload () {
+	pluginWillUnload() {
 		uninject('pc-cadence-userContextMenu');
+		uninject('pc-cadence-guildContextMenu');
 	}
 
 	async _patchContextMenu() {
 		const UserContextMenu = await getModuleByDisplayName('UserContextMenu');
-		inject('pc-cadence-userContextMenu', UserContextMenu.prototype, 'render', function (_, res) {
-			console.log("res", res);
+		inject('pc-cadence-userContextMenu', UserContextMenu.prototype, 'render', (_, res) => {
+			if (this.settings.get("patchUser")) {
+				console.log("res", res);
 
-			let groups = cmcontrol.res.extractGroups(res);
-			//console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
-			
-			//console.log("items");
-			//groups.forEach(g => {
-			//	if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
-			//});
+				let groups = cmcontrol.res.extractGroups(res);
+				//console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
+				
+				//console.log("items");
+				//groups.forEach(g => {
+				//	if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
+				//});
 
-			//let index = cmcontrol.generic.indexOf(groups, "MenuGroup", true)[0];
-			//console.log(index, groups[index]);
+				//let index = cmcontrol.generic.indexOf(groups, "MenuGroup", true)[0];
+				//console.log(index, groups[index]);
 
-			if (groups[1].type.displayName != "UserVolumeGroup") {
-				cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "1"), "c-InviteToServer");
-				cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "2"), "c-ShowOnActivityFeed");
-				//cmcontrol.generic.remove(cmcontrol.generic.extractItems(groups[1]), "c-ShowOnActivityFeed");
-				groups.forEach(group => {
-					let items = cmcontrol.generic.extractItems(group);
-					if (items) {
-						console.log("summary", cmcontrol.generic.summary(items));
-						["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
-							cmcontrol.generic.remove(items, toRemove);
-						});
-						["c-InviteToServer", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
-							cmcontrol.generic.moveTo(items, toMove, groups[0]);
-						});
-					}
+				if (groups[1].type.displayName != "UserVolumeGroup") {
+					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "1"), "c-InviteToServer");
+					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "2"), "c-ShowOnActivityFeed");
+					//cmcontrol.generic.remove(cmcontrol.generic.extractItems(groups[1]), "c-ShowOnActivityFeed");
+					groups.forEach(group => {
+						let items = cmcontrol.generic.extractItems(group);
+						if (items) {
+							console.log("summary", cmcontrol.generic.summary(items));
+							["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
+								cmcontrol.generic.remove(items, toRemove);
+							});
+							["c-InviteToServer", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
+								cmcontrol.generic.moveTo(items, toMove, groups[0]);
+							});
+						}
+					});
+					groups[2] = null;
+				} else {
+					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "0"), "c-Mute");
+					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "1"), "c-ChangeNickname");
+					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "2"), "c-InviteToServer");
+					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "3"), "c-ShowOnActivityFeed");
+					groups.forEach(group => {
+						let items = cmcontrol.generic.extractItems(group);
+						if (items) {
+							console.log("summary", cmcontrol.generic.summary(items));
+							["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
+								cmcontrol.generic.remove(items, toRemove);
+							});
+							["c-InviteToServer", "c-Mute", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
+								cmcontrol.generic.moveTo(items, toMove, groups[0]);
+							});
+						}
+					});
+				}
+				//let inviteToServer = cmcontrol.generic.extractItems(groups[1])[1];
+				//console.log(inviteToServer);
+				//cmcontrol.generic.extractItems(groups[0]).push(inviteToServer);
+				//cmcontrol.generic.extractItems(groups[1])[1] = null;
+
+				//cmcontrol.generic.extractItems(groups[1])[2] = null;
+			}
+
+			return res;
+		});
+
+		const GuildContextMenu = await getModuleByDisplayName('GuildContextMenu');
+		inject('pc-cadence-guildContextMenu', GuildContextMenu.prototype, 'render', (_, res) => {
+			if (this.settings.get("patchGuild")) {
+				console.log("res", res);
+
+				let groups = cmcontrol.resguild.extractGroups(res);
+
+				/*console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
+				
+				console.log("items");
+				groups.forEach(g => {
+					if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
 				});
-				groups[2] = null;
-			} else {
-				cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "0"), "c-Mute");
-				cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "1"), "c-ChangeNickname");
-				cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "2"), "c-InviteToServer");
-				cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "3"), "c-ShowOnActivityFeed");
-				groups.forEach(group => {
+				*/
+
+				groups.forEach((group, index) => {
 					let items = cmcontrol.generic.extractItems(group);
-					if (items) {
-						console.log("summary", cmcontrol.generic.summary(items));
-						["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
-							cmcontrol.generic.remove(items, toRemove);
-						});
-						["c-InviteToServer", "c-Mute", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
-							cmcontrol.generic.moveTo(items, toMove, groups[0]);
+					if (items && (items instanceof Array)) {
+						if (index == 2) items.fill(null); // create channel and create category is always in group index 2
+
+						let toRemove = [];
+						toRemove.unshift(cmcontrol.generic.indexOf(items, "GuildPrivacySettingsItem")); // privacy settings
+						toRemove.unshift(toRemove[0]+1); // change nickname
+						let muteIndex = cmcontrol.generic.indexOf(items, "GuildMuteItem"); // mute server (this isn't actually removed)
+						toRemove.unshift(muteIndex+1); // hide muted channels
+						
+						toRemove.forEach(index => {
+							items[index] = null;
 						});
 					}
 				});
 			}
-			//let inviteToServer = cmcontrol.generic.extractItems(groups[1])[1];
-			//console.log(inviteToServer);
-			//cmcontrol.generic.extractItems(groups[0]).push(inviteToServer);
-			//cmcontrol.generic.extractItems(groups[1])[1] = null;
-
-			//cmcontrol.generic.extractItems(groups[1])[2] = null;
 
 			return res;
 		});
