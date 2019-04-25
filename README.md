@@ -12,3 +12,7 @@ Users:
 
 - removed: call, add note, show on activity feed, watch stream
 - moved to top: invite to server, mute, add/remove friend, block
+
+Guilds:
+
+- removed: hide muted channels, privacy settings, change nickname, create channel, create category

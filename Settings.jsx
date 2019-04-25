@@ -1,11 +1,7 @@
 const { React } = require('powercord/webpack');
 const { SwitchItem } = require('powercord/components/settings');
 
-module.exports = class EmojiUtilitySettings extends React.Component {
-	constructor(props) {
-		super(props);
-	}
-
+module.exports = class ContextPlusSettings extends React.Component {
 	render() {
 		return (
 			<div>

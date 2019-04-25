@@ -131,9 +131,9 @@ const cmcontrol = {
 
 const Settings = require('./Settings.jsx');
 
-module.exports = class CadenceUserContextMenu extends Plugin {
+module.exports = class ContextPlus extends Plugin {
 	startPlugin() {
-		this.registerSettings('pc-cadence-contextPlus', 'Context+', Settings);
+		this.registerSettings('cadence-contextPlus', 'Context+', Settings);
 
 		// Default settings
 		this.settings.set("patchUser", this.settings.get("patchUser", true));
@@ -143,17 +143,16 @@ module.exports = class CadenceUserContextMenu extends Plugin {
 	}
 
 	pluginWillUnload() {
-		uninject('pc-cadence-userContextMenu');
-		uninject('pc-cadence-guildContextMenu');
+		uninject('cadence-cp-userContextMenu');
+		uninject('cadence-cp-guildContextMenu');
 	}
 
 	async _patchContextMenu() {
 		const UserContextMenu = await getModuleByDisplayName('UserContextMenu');
-		inject('pc-cadence-userContextMenu', UserContextMenu.prototype, 'render', (_, res) => {
+		inject('cadence-cp-userContextMenu', UserContextMenu.prototype, 'render', (_, res) => {
 			if (this.settings.get("patchUser")) {
-				console.log("res", res);
+				//console.log("res", res);
 
-				let groups = cmcontrol.res.extractGroups(res);
 				//console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
 				
 				//console.log("items");
@@ -163,6 +162,8 @@ module.exports = class CadenceUserContextMenu extends Plugin {
 
 				//let index = cmcontrol.generic.indexOf(groups, "MenuGroup", true)[0];
 				//console.log(index, groups[index]);
+
+				let groups = cmcontrol.res.extractGroups(res);
 
 				if (groups[1].type.displayName != "UserVolumeGroup") {
 					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "1"), "c-InviteToServer");
@@ -199,24 +200,16 @@ module.exports = class CadenceUserContextMenu extends Plugin {
 						}
 					});
 				}
-				//let inviteToServer = cmcontrol.generic.extractItems(groups[1])[1];
-				//console.log(inviteToServer);
-				//cmcontrol.generic.extractItems(groups[0]).push(inviteToServer);
-				//cmcontrol.generic.extractItems(groups[1])[1] = null;
-
-				//cmcontrol.generic.extractItems(groups[1])[2] = null;
 			}
 
 			return res;
 		});
 
 		const GuildContextMenu = await getModuleByDisplayName('GuildContextMenu');
-		inject('pc-cadence-guildContextMenu', GuildContextMenu.prototype, 'render', (_, res) => {
+		inject('cadence-cp-guildContextMenu', GuildContextMenu.prototype, 'render', (_, res) => {
 			if (this.settings.get("patchGuild")) {
-				console.log("res", res);
-
-				let groups = cmcontrol.resguild.extractGroups(res);
-
+				//console.log("res", res);
+				
 				/*console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
 				
 				console.log("items");
@@ -224,6 +217,8 @@ module.exports = class CadenceUserContextMenu extends Plugin {
 					if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
 				});
 				*/
+				
+				let groups = cmcontrol.resguild.extractGroups(res);
 
 				groups.forEach((group, index) => {
 					let items = cmcontrol.generic.extractItems(group);
