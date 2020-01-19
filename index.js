@@ -1,6 +1,8 @@
 const { Plugin } = require('powercord/entities');
 const { getModuleByDisplayName } = require('powercord/webpack');
 const { inject, uninject } = require('powercord/injector');
+const waitFor = require('powercord/util/waitFor')
+const getOwnerInstance = require('powercord/util/getOwnerInstance')
 
 function sd(object, path) {
 	let fragments = path.split(".");
@@ -148,76 +150,93 @@ module.exports = class ContextPlus extends Plugin {
 	}
 
 	async _patchContextMenu() {
-		const UserContextMenu = await getModuleByDisplayName('UserContextMenu');
-		inject('cadence-cp-userContextMenu', UserContextMenu.prototype, 'render', (_, res) => {
-			if (this.settings.get("patchUser")) {
-				//console.log("res", res);
+		const _this = this
 
-				//console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
-				
-				//console.log("items");
-				//groups.forEach(g => {
-				//	if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
-				//});
+		const menu = await waitFor(".contextMenu-HLZMGh")
+		if (menu.textContent.startsWith("ProfileMentionMessageCall")) {
+			const res = getOwnerInstance(menu)
+			inject("cadence-cp-userContextMenu", res.__proto__, "render", function(_, res) {
+				;(() => { // returning inside here should not exit render
 
-				//let index = cmcontrol.generic.indexOf(groups, "MenuGroup", true)[0];
-				//console.log(index, groups[index]);
+					if (_this.settings.get("patchUser")) {
+						res = res.props.children(this) // ????????
+						//console.log("res", res);
 
-				let groups = cmcontrol.res.extractGroups(res);
+						//console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
 
-				if (groups[1].type.displayName != "UserVolumeGroup") {
-					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "1"), "c-InviteToServer");
-					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "2"), "c-ShowOnActivityFeed");
-					//cmcontrol.generic.remove(cmcontrol.generic.extractItems(groups[1]), "c-ShowOnActivityFeed");
-					groups.forEach(group => {
-						let items = cmcontrol.generic.extractItems(group);
-						if (items) {
-							console.log("summary", cmcontrol.generic.summary(items));
-							["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
-								cmcontrol.generic.remove(items, toRemove);
+						//console.log("items");
+						//groups.forEach(g => {
+						//	if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
+						//});
+
+						//let index = cmcontrol.generic.indexOf(groups, "MenuGroup", true)[0];
+						//console.log(index, groups[index]);
+
+						let groups
+						try {
+							groups = cmcontrol.res.extractGroups(res);
+							if (!(
+								groups[0].props.children[0].type.displayName === "UserProfileItem"
+								&& groups[0].props.children[1].type.displayName === "UserMentionItem"
+							)) return
+						} catch (e) {
+							return
+						}
+						if (groups[1].type.displayName != "UserVolumeGroup") {
+							cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "1"), "c-InviteToServer");
+							cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[1], "2"), "c-ShowOnActivityFeed");
+							//cmcontrol.generic.remove(cmcontrol.generic.extractItems(groups[1]), "c-ShowOnActivityFeed");
+							groups.forEach(group => {
+								let items = cmcontrol.generic.extractItems(group);
+								if (items) {
+									console.log("summary", cmcontrol.generic.summary(items));
+									["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
+										cmcontrol.generic.remove(items, toRemove);
+									});
+									["c-InviteToServer", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
+										cmcontrol.generic.moveTo(items, toMove, groups[0]);
+									});
+								}
 							});
-							["c-InviteToServer", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
-								cmcontrol.generic.moveTo(items, toMove, groups[0]);
+							groups[2] = null;
+						} else if (groups[2].props.children[0] != null) {
+							cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "0"), "c-Mute");
+							cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "1"), "c-ChangeNickname");
+							cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "2"), "c-InviteToServer");
+							cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "3"), "c-ShowOnActivityFeed");
+							groups.forEach(group => {
+								let items = cmcontrol.generic.extractItems(group);
+								if (items) {
+									console.log("summary", cmcontrol.generic.summary(items));
+									["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
+										cmcontrol.generic.remove(items, toRemove);
+									});
+									["c-InviteToServer", "c-Mute", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
+										cmcontrol.generic.moveTo(items, toMove, groups[0]);
+									});
+								}
 							});
 						}
-					});
-					groups[2] = null;
-				} else {
-					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "0"), "c-Mute");
-					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "1"), "c-ChangeNickname");
-					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "2"), "c-InviteToServer");
-					cmcontrol.generic.fillName(cmcontrol.generic.tree(groups[2], "3"), "c-ShowOnActivityFeed");
-					groups.forEach(group => {
-						let items = cmcontrol.generic.extractItems(group);
-						if (items) {
-							console.log("summary", cmcontrol.generic.summary(items));
-							["UserCallItem", "UserNoteItem", "c-ShowOnActivityFeed", "UserStreamItem"].forEach(toRemove => {
-								cmcontrol.generic.remove(items, toRemove);
-							});
-							["c-InviteToServer", "c-Mute", "UserAddFriendItem", "UserBlockItem"].forEach(toMove => {
-								cmcontrol.generic.moveTo(items, toMove, groups[0]);
-							});
-						}
-					});
-				}
-			}
+					}
 
-			return res;
-		});
-
+				})()
+				return res
+			})
+		}
+		/*
 		const GuildContextMenu = await getModuleByDisplayName('GuildContextMenu');
 		inject('cadence-cp-guildContextMenu', GuildContextMenu.prototype, 'render', (_, res) => {
 			if (this.settings.get("patchGuild")) {
 				//console.log("res", res);
-				
+
 				/*console.log("groups", [].concat(...groups.map(g => [g.type.displayName, g])));
-				
+
 				console.log("items");
 				groups.forEach(g => {
 					if (g.props.children) console.log(g.props.children.map(c => c.type.displayName));
 				});
-				*/
-				
+				*//*
+
 				let groups = cmcontrol.resguild.extractGroups(res);
 
 				groups.forEach((group, index) => {
@@ -230,7 +249,7 @@ module.exports = class ContextPlus extends Plugin {
 						toRemove.unshift(toRemove[0]+1); // change nickname
 						let muteIndex = cmcontrol.generic.indexOf(items, "GuildMuteItem"); // mute server (this isn't actually removed)
 						toRemove.unshift(muteIndex+1); // hide muted channels
-						
+
 						toRemove.forEach(index => {
 							items[index] = null;
 						});
@@ -239,6 +258,6 @@ module.exports = class ContextPlus extends Plugin {
 			}
 
 			return res;
-		});
+		});*/
 	}
 };
